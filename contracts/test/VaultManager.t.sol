@@ -14,18 +14,34 @@ contract VaultManagerTest is TestBase {
     address private constant BOB = address(0xB0B);
     address private constant TREASURY = address(0xBEEF);
 
-    function setUp() public {
+  function setUp() public {
         manager = new VaultManager();
         tokenA = new MockERC20("TokenA", "A", 18);
         tokenB = new MockERC20("TokenB", "B", 6);
 
-        manager.setTokenWhitelist(address(tokenA), true);
-        manager.setTokenWhitelist(address(tokenB), true);
+    manager.setTokenWhitelist(address(tokenA), true);
+    manager.setTokenWhitelist(address(tokenB), true);
 
         tokenA.mint(ALICE, 1_000 ether);
         tokenA.mint(BOB, 1_000 ether);
         tokenB.mint(ALICE, 1_000_000_000);
-    }
+  }
+
+  function testGetWhitelistedTokens_AddRemove() public {
+    address[] memory tokens = manager.getWhitelistedTokens();
+    assertEq(tokens.length, 2, "length");
+    assertEq(tokens[0], address(tokenA), "tokenA");
+    assertEq(tokens[1], address(tokenB), "tokenB");
+
+    manager.setTokenWhitelist(address(tokenA), false);
+    address[] memory tokensAfter = manager.getWhitelistedTokens();
+    assertEq(tokensAfter.length, 1, "length after remove");
+    assertEq(tokensAfter[0], address(tokenB), "tokenB after remove");
+
+    manager.setTokenWhitelist(address(tokenA), true);
+    address[] memory tokensReadd = manager.getWhitelistedTokens();
+    assertEq(tokensReadd.length, 2, "length after readd");
+  }
 
     function testCreateVaultAndDeposit_SingleCall() public {
         uint64 unlockTimestamp = uint64(block.timestamp + 7 days);

@@ -34,6 +34,8 @@ contract VaultManager is Ownable {
     Vault[] private vaults;
 
     mapping(address token => bool allowed) public isTokenWhitelisted;
+    address[] private whitelistedTokens;
+    mapping(address token => uint256 indexPlusOne) private whitelistedTokenIndexPlusOne;
     mapping(uint256 vaultId => mapping(address token => uint256 balance)) public vaultTokenBalance;
     mapping(uint256 vaultId => address[] tokens) private vaultTokens;
     mapping(uint256 vaultId => mapping(address token => bool seen)) private vaultTokenSeen;
@@ -62,8 +64,39 @@ contract VaultManager is Ownable {
         return vaultIdsByOwner[vaultOwner];
     }
 
+    function getWhitelistedTokens() external view returns (address[] memory) {
+        return whitelistedTokens;
+    }
+
     function setTokenWhitelist(address token, bool allowed) external onlyOwner {
+        bool current = isTokenWhitelisted[token];
+        if (current == allowed) {
+            emit TokenWhitelistUpdated(token, allowed);
+            return;
+        }
+
         isTokenWhitelisted[token] = allowed;
+
+        if (allowed) {
+            if (whitelistedTokenIndexPlusOne[token] == 0) {
+                whitelistedTokens.push(token);
+                whitelistedTokenIndexPlusOne[token] = whitelistedTokens.length;
+            }
+        } else {
+            uint256 indexPlusOne = whitelistedTokenIndexPlusOne[token];
+            if (indexPlusOne != 0) {
+                uint256 index = indexPlusOne - 1;
+                uint256 lastIndex = whitelistedTokens.length - 1;
+                if (index != lastIndex) {
+                    address lastToken = whitelistedTokens[lastIndex];
+                    whitelistedTokens[index] = lastToken;
+                    whitelistedTokenIndexPlusOne[lastToken] = index + 1;
+                }
+                whitelistedTokens.pop();
+                whitelistedTokenIndexPlusOne[token] = 0;
+            }
+        }
+
         emit TokenWhitelistUpdated(token, allowed);
     }
 
