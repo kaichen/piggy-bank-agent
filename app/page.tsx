@@ -1,4 +1,5 @@
 import { ConnectWallet } from "@/components/connect-wallet"
+import { VaultManagerDemo } from "@/components/vault-manager-demo"
 
 export default function Home() {
   return (
@@ -33,6 +34,11 @@ export default function Home() {
         {/* Wallet Card */}
         <div className="flex justify-center">
           <ConnectWallet />
+        </div>
+
+        {/* Contract Demo */}
+        <div className="mt-10 flex justify-center">
+          <VaultManagerDemo />
         </div>
 
         {/* Features */}

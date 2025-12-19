@@ -1,0 +1,178 @@
+export const vaultManagerAbi = [
+  {
+    type: "event",
+    name: "VaultCreated",
+    inputs: [
+      { name: "vaultId", type: "uint256", indexed: true },
+      { name: "owner", type: "address", indexed: true },
+      { name: "unlockTimestamp", type: "uint64", indexed: false },
+    ],
+    anonymous: false,
+  },
+  {
+    type: "event",
+    name: "Deposited",
+    inputs: [
+      { name: "vaultId", type: "uint256", indexed: true },
+      { name: "depositor", type: "address", indexed: true },
+      { name: "token", type: "address", indexed: true },
+      { name: "amount", type: "uint256", indexed: false },
+    ],
+    anonymous: false,
+  },
+  {
+    type: "event",
+    name: "VaultBroken",
+    inputs: [
+      { name: "vaultId", type: "uint256", indexed: true },
+      { name: "owner", type: "address", indexed: true },
+      { name: "matured", type: "bool", indexed: false },
+    ],
+    anonymous: false,
+  },
+  {
+    type: "function",
+    name: "owner",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "", type: "address" }],
+  },
+  {
+    type: "function",
+    name: "setTokenWhitelist",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "token", type: "address" },
+      { name: "allowed", type: "bool" },
+    ],
+    outputs: [],
+  },
+  {
+    type: "function",
+    name: "isTokenWhitelisted",
+    stateMutability: "view",
+    inputs: [{ name: "", type: "address" }],
+    outputs: [{ name: "", type: "bool" }],
+  },
+  {
+    type: "function",
+    name: "protocolFees",
+    stateMutability: "view",
+    inputs: [{ name: "", type: "address" }],
+    outputs: [{ name: "", type: "uint256" }],
+  },
+  {
+    type: "function",
+    name: "withdrawFees",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "token", type: "address" },
+      { name: "to", type: "address" },
+      { name: "amount", type: "uint256" },
+    ],
+    outputs: [],
+  },
+  {
+    type: "function",
+    name: "createVault",
+    stateMutability: "nonpayable",
+    inputs: [{ name: "unlockTimestamp", type: "uint64" }],
+    outputs: [{ name: "vaultId", type: "uint256" }],
+  },
+  {
+    type: "function",
+    name: "createVaultAndDeposit",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "unlockTimestamp", type: "uint64" },
+      { name: "token", type: "address" },
+      { name: "amount", type: "uint256" },
+    ],
+    outputs: [{ name: "vaultId", type: "uint256" }],
+  },
+  {
+    type: "function",
+    name: "createVaultAndDepositBatch",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "unlockTimestamp", type: "uint64" },
+      { name: "tokens", type: "address[]" },
+      { name: "amounts", type: "uint256[]" },
+    ],
+    outputs: [{ name: "vaultId", type: "uint256" }],
+  },
+  {
+    type: "function",
+    name: "deposit",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "vaultId", type: "uint256" },
+      { name: "token", type: "address" },
+      { name: "amount", type: "uint256" },
+    ],
+    outputs: [],
+  },
+  {
+    type: "function",
+    name: "breakVault",
+    stateMutability: "nonpayable",
+    inputs: [{ name: "vaultId", type: "uint256" }],
+    outputs: [],
+  },
+  {
+    type: "function",
+    name: "getVault",
+    stateMutability: "view",
+    inputs: [{ name: "vaultId", type: "uint256" }],
+    outputs: [
+      {
+        name: "",
+        type: "tuple",
+        components: [
+          { name: "owner", type: "address" },
+          { name: "unlockTimestamp", type: "uint64" },
+          { name: "broken", type: "bool" },
+        ],
+      },
+    ],
+  },
+  {
+    type: "function",
+    name: "getVaultTokens",
+    stateMutability: "view",
+    inputs: [{ name: "vaultId", type: "uint256" }],
+    outputs: [{ name: "", type: "address[]" }],
+  },
+  {
+    type: "function",
+    name: "getVaultIdsByOwner",
+    stateMutability: "view",
+    inputs: [{ name: "vaultOwner", type: "address" }],
+    outputs: [{ name: "", type: "uint256[]" }],
+  },
+  {
+    type: "function",
+    name: "vaultTokenBalance",
+    stateMutability: "view",
+    inputs: [
+      { name: "", type: "uint256" },
+      { name: "", type: "address" },
+    ],
+    outputs: [{ name: "", type: "uint256" }],
+  },
+  {
+    type: "function",
+    name: "EARLY_BREAK_FEE_BPS",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "", type: "uint256" }],
+  },
+  {
+    type: "function",
+    name: "BPS_DENOMINATOR",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "", type: "uint256" }],
+  },
+] as const
+

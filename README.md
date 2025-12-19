@@ -28,3 +28,19 @@ Continue building your app on:
 2. Deploy your chats from the v0 interface
 3. Changes are automatically pushed to this repository
 4. Vercel deploys the latest version from this repository
+
+## Contracts
+
+Foundry contracts live under `contracts/`. See `contracts/README.md` for deploy + admin commands.
+
+### Frontend config
+
+Set the deployed VaultManager address for the target chain:
+
+```bash
+# Arbitrum One (chainId=42161)
+NEXT_PUBLIC_VAULT_MANAGER_ADDRESS_ARBITRUM=0x...
+
+# Ethereum Mainnet (chainId=1)
+NEXT_PUBLIC_VAULT_MANAGER_ADDRESS_MAINNET=0x...
+```
