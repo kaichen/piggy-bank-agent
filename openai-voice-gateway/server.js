@@ -13,7 +13,13 @@ const SYSTEM_INSTRUCTION = `You are Piggy Mentor, a friendly cartoon pig who hel
 You speak in a warm, patient tone with occasional pig sounds like "oink".
 Keep responses short (1-2 sentences), encouraging, and easy for children to understand.
 You're optimistic, patient, and soothing. Think of a mix between Winnie the Pooh and Baymax.
-When asked about crypto prices, use the get_crypto_price tool to fetch real-time data.`;
+
+You have access to these tools:
+- get_crypto_price: Use this when asked about the price of any cryptocurrency
+- get_market_overview: Use this when asked about the overall crypto market
+- get_wallet_balance: Use this when asked about the user's wallet balance or holdings
+
+Always use the appropriate tool when asked about prices, markets, or wallet balances.`;
 
 // Tools for function calling
 const TOOLS = [
@@ -36,6 +42,15 @@ const TOOLS = [
     type: "function",
     name: "get_market_overview",
     description: "Get an overview of the top cryptocurrencies by market cap",
+    parameters: {
+      type: "object",
+      properties: {},
+    },
+  },
+  {
+    type: "function",
+    name: "get_wallet_balance",
+    description: "Get the ETH balance and token holdings of the user's connected wallet",
     parameters: {
       type: "object",
       properties: {},
@@ -98,13 +113,82 @@ async function getMarketOverview() {
   }
 }
 
-// Handle tool calls
-async function handleToolCall(name, args) {
+// RPC endpoints for different chains
+const RPC_ENDPOINTS = {
+  ethereum: "https://eth.llamarpc.com",
+  arbitrum: "https://arb1.arbitrum.io/rpc",
+};
+
+// Fetch wallet balance from RPC
+async function getWalletBalance(walletAddress) {
+  if (!walletAddress) {
+    return { error: "No wallet connected. Please connect your wallet first." };
+  }
+
+  try {
+    const results = {};
+
+    // Fetch ETH balance on Ethereum mainnet
+    const ethRes = await fetch(RPC_ENDPOINTS.ethereum, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        method: "eth_getBalance",
+        params: [walletAddress, "latest"],
+        id: 1,
+      }),
+    });
+    const ethData = await ethRes.json();
+    if (ethData.result) {
+      const balanceWei = BigInt(ethData.result);
+      const balanceEth = Number(balanceWei) / 1e18;
+      results.ethereum = {
+        chain: "Ethereum",
+        balance: balanceEth.toFixed(4) + " ETH",
+      };
+    }
+
+    // Fetch ETH balance on Arbitrum
+    const arbRes = await fetch(RPC_ENDPOINTS.arbitrum, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        method: "eth_getBalance",
+        params: [walletAddress, "latest"],
+        id: 1,
+      }),
+    });
+    const arbData = await arbRes.json();
+    if (arbData.result) {
+      const balanceWei = BigInt(arbData.result);
+      const balanceEth = Number(balanceWei) / 1e18;
+      results.arbitrum = {
+        chain: "Arbitrum",
+        balance: balanceEth.toFixed(4) + " ETH",
+      };
+    }
+
+    return {
+      wallet: walletAddress.slice(0, 6) + "..." + walletAddress.slice(-4),
+      balances: Object.values(results),
+    };
+  } catch (err) {
+    console.error("Wallet balance error:", err);
+    return { error: "Failed to fetch wallet balance" };
+  }
+}
+
+// Handle tool calls - walletAddress is passed from session context
+async function handleToolCall(name, args, walletAddress) {
   switch (name) {
     case "get_crypto_price":
       return await getCryptoPrice(args.symbol);
     case "get_market_overview":
       return await getMarketOverview();
+    case "get_wallet_balance":
+      return await getWalletBalance(walletAddress);
     default:
       return { error: `Unknown tool: ${name}` };
   }
@@ -123,7 +207,11 @@ const server = createServer((req, res) => {
 const wss = new WebSocketServer({ server });
 
 wss.on("connection", (clientWs, req) => {
-  console.log("Client connected");
+  // Extract wallet address from URL query params
+  const url = new URL(req.url, `http://${req.headers.host}`);
+  const walletAddress = url.searchParams.get("wallet") || null;
+
+  console.log("Client connected", walletAddress ? `wallet: ${walletAddress}` : "(no wallet)");
 
   if (!OPENAI_API_KEY) {
     clientWs.send(JSON.stringify({ type: "error", message: "OpenAI API key not configured" }));
@@ -227,7 +315,7 @@ wss.on("connection", (clientWs, req) => {
 
             try {
               const args = JSON.parse(argsStr);
-              const result = await handleToolCall(name, args);
+              const result = await handleToolCall(name, args, walletAddress);
               console.log("Function result:", result);
 
               // Send function result back to OpenAI

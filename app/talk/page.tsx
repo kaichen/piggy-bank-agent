@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef, useMemo } from "react"
 import { useRouter } from "next/navigation"
+import { useAccount } from "wagmi"
 import { Menu, PhoneOff, Phone, Mic, MicOff } from "lucide-react"
 
 // Audio constants - OpenAI uses 24kHz for both input and output
@@ -39,6 +40,7 @@ function resampleToInt16(input: Float32Array, inRate: number, outRate: number): 
 
 export default function TalkPage() {
   const router = useRouter()
+  const { address: walletAddress, isConnected: isWalletConnected } = useAccount()
   const [status, setStatus] = useState<CallStatus>("idle")
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
   const [currentText, setCurrentText] = useState("Tap to start talking with Piggy Mentor")
@@ -206,7 +208,14 @@ export default function TalkPage() {
     setCurrentText("Connecting to Piggy Mentor...")
     setElapsedSeconds(0)
 
-    const ws = new WebSocket(`${wsBase}?sid=${sid}`)
+    // Build WebSocket URL with session ID and wallet address
+    const wsUrl = new URL(wsBase)
+    wsUrl.searchParams.set("sid", sid)
+    if (walletAddress) {
+      wsUrl.searchParams.set("wallet", walletAddress)
+    }
+
+    const ws = new WebSocket(wsUrl.toString())
     ws.binaryType = "arraybuffer"
     wsRef.current = ws
 
@@ -279,7 +288,7 @@ export default function TalkPage() {
         setCurrentText("Call ended")
       }
     }
-  }, [status, wsBase, sid, startMic, stopPlayback, enqueuePcm, cleanupCall])
+  }, [status, wsBase, sid, walletAddress, startMic, stopPlayback, enqueuePcm, cleanupCall])
 
   // Stop voice call
   const stopCall = useCallback(() => {
