@@ -168,7 +168,7 @@ export default function TalkPage() {
         </div>
 
         {/* Name */}
-        <h1 className="mb-2 text-3xl font-bold text-slate-900">Piggy Mentor</h1>
+        <h1 className="mb-2 text-3xl font-bold text-slate-900">Piggy</h1>
 
         {/* Call Duration / Status */}
         <div className="mb-8 flex items-center gap-2">
