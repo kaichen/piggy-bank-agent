@@ -3,12 +3,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { isAddress, parseUnits, formatUnits } from "viem"
 import { useAccount, useChainId, usePublicClient, useWalletClient } from "wagmi"
-import { ChevronDown, RefreshCw } from "lucide-react"
+import { RefreshCw } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { erc20Abi } from "@/lib/contracts/erc20"
 import { getVaultManagerAddress, type Address } from "@/lib/contracts/addresses"
 import { vaultManagerAbi } from "@/lib/contracts/vault-manager"
@@ -42,21 +41,9 @@ export function VaultManagerDemo() {
   const [tokenDecimals, setTokenDecimals] = useState<number | null>(null)
   const [tokenWhitelisted, setTokenWhitelisted] = useState<boolean | null>(null)
   const [allowance, setAllowance] = useState<bigint | null>(null)
-  const [tokenBalance, setTokenBalance] = useState<bigint | null>(null)
-
-  const [whitelistLoading, setWhitelistLoading] = useState(false)
-  const [whitelistError, setWhitelistError] = useState<string | null>(null)
-  const [whitelistedTokens, setWhitelistedTokens] = useState<Array<{ address: Address; symbol: string | null }>>([])
 
   const [myVaultIds, setMyVaultIds] = useState<bigint[]>([])
   const [lastCreatedVaultId, setLastCreatedVaultId] = useState<bigint | null>(null)
-  const [vaultDetails, setVaultDetails] = useState<Map<string, {
-    owner: Address
-    unlockTimestamp: bigint
-    broken: boolean
-    tokens: Array<{ address: Address; symbol: string; decimals: number; balance: bigint }>
-  }>>(new Map())
-  const [vaultDetailsLoading, setVaultDetailsLoading] = useState(false)
 
   const [breakVaultId, setBreakVaultId] = useState("")
   const [breakVaultPreview, setBreakVaultPreview] = useState<{
@@ -94,130 +81,14 @@ export function VaultManagerDemo() {
       args: [address],
     })
     setMyVaultIds(ids)
-
-    // 获取每个 vault 的详细信息
-    if (ids.length > 0) {
-      setVaultDetailsLoading(true)
-      try {
-        const details = await Promise.all(
-          ids.map(async (vaultId) => {
-            const [vault, tokenAddrs] = await Promise.all([
-              publicClient.readContract({
-                address: vaultManagerAddress,
-                abi: vaultManagerAbi,
-                functionName: "getVault",
-                args: [vaultId],
-              }),
-              publicClient.readContract({
-                address: vaultManagerAddress,
-                abi: vaultManagerAbi,
-                functionName: "getVaultTokens",
-                args: [vaultId],
-              }),
-            ])
-
-            const tokens = await Promise.all(
-              tokenAddrs.map(async (tokenAddr) => {
-                const [symbol, decimalsRaw, balance] = await Promise.all([
-                  publicClient.readContract({
-                    address: tokenAddr,
-                    abi: erc20Abi,
-                    functionName: "symbol",
-                  }).catch(() => "???"),
-                  publicClient.readContract({
-                    address: tokenAddr,
-                    abi: erc20Abi,
-                    functionName: "decimals",
-                  }).catch(() => 18),
-                  publicClient.readContract({
-                    address: vaultManagerAddress,
-                    abi: vaultManagerAbi,
-                    functionName: "vaultTokenBalance",
-                    args: [vaultId, tokenAddr],
-                  }),
-                ])
-                const decimals = typeof decimalsRaw === "bigint" ? Number(decimalsRaw) : decimalsRaw
-                return { address: tokenAddr as Address, symbol: symbol as string, decimals, balance }
-              })
-            )
-
-            return {
-              id: vaultId.toString(),
-              owner: ((vault as any).owner ?? (vault as any)[0]) as Address,
-              unlockTimestamp: ((vault as any).unlockTimestamp ?? (vault as any)[1]) as bigint,
-              broken: ((vault as any).broken ?? (vault as any)[2]) as boolean,
-              tokens,
-            }
-          })
-        )
-
-        const newMap = new Map<string, typeof details[number]>()
-        for (const d of details) {
-          newMap.set(d.id, d)
-        }
-        setVaultDetails(newMap)
-      } finally {
-        setVaultDetailsLoading(false)
-      }
-    } else {
-      setVaultDetails(new Map())
-    }
-
     return ids
   }, [address, publicClient, vaultManagerAddress])
-
-  const refreshWhitelist = useCallback(async () => {
-    setWhitelistError(null)
-    setWhitelistLoading(true)
-
-    try {
-      if (!publicClient || !vaultManagerAddress) {
-        setWhitelistedTokens([])
-        return
-      }
-
-      const tokens = await publicClient.readContract({
-        address: vaultManagerAddress,
-        abi: vaultManagerAbi,
-        functionName: "getWhitelistedTokens",
-      })
-
-      const infos = await Promise.all(
-        tokens.map(async (token) => {
-          let symbol: string | null = null
-          try {
-            symbol = await publicClient.readContract({
-              address: token,
-              abi: erc20Abi,
-              functionName: "symbol",
-            })
-          } catch {
-            symbol = null
-          }
-          return { address: token as Address, symbol }
-        }),
-      )
-
-      setWhitelistedTokens(infos)
-    } catch (err) {
-      const message = toErrorMessage(err)
-      if (message.includes("getWhitelistedTokens") && message.includes("reverted")) {
-        setWhitelistError("合约不支持 getWhitelistedTokens（旧版本/地址或网络不匹配），请重新部署最新版 VaultManager 并更新地址")
-      } else {
-        setWhitelistError(message)
-      }
-      setWhitelistedTokens([])
-    } finally {
-      setWhitelistLoading(false)
-    }
-  }, [publicClient, vaultManagerAddress])
 
   const refreshTokenInfo = useCallback(async () => {
     setTokenSymbol(null)
     setTokenDecimals(null)
     setTokenWhitelisted(null)
     setAllowance(null)
-    setTokenBalance(null)
 
     if (!publicClient || !vaultManagerAddress || !tokenAddressTyped) return
 
@@ -246,33 +117,14 @@ export function VaultManagerDemo() {
     setTokenWhitelisted(whitelisted)
 
     if (!address) return
-    const [currentAllowance, balance] = await Promise.all([
-      publicClient.readContract({
-        address: tokenAddressTyped,
-        abi: erc20Abi,
-        functionName: "allowance",
-        args: [address, vaultManagerAddress],
-      }),
-      publicClient.readContract({
-        address: tokenAddressTyped,
-        abi: erc20Abi,
-        functionName: "balanceOf",
-        args: [address],
-      }),
-    ])
+    const currentAllowance = await publicClient.readContract({
+      address: tokenAddressTyped,
+      abi: erc20Abi,
+      functionName: "allowance",
+      args: [address, vaultManagerAddress],
+    })
     setAllowance(currentAllowance)
-    setTokenBalance(balance)
   }, [address, publicClient, tokenAddressTyped, vaultManagerAddress])
-
-  useEffect(() => {
-    refreshWhitelist().catch(() => undefined)
-  }, [refreshWhitelist])
-
-  useEffect(() => {
-    if (!tokenAddress.trim() && whitelistedTokens.length) {
-      setTokenAddress(whitelistedTokens[0].address)
-    }
-  }, [tokenAddress, whitelistedTokens])
 
   useEffect(() => {
     setError(null)
@@ -294,10 +146,6 @@ export function VaultManagerDemo() {
     }
     refreshVaultIds().catch(() => undefined)
   }, [isConnected, refreshVaultIds])
-
-  const formatAddress = useCallback((addr: string) => {
-    return `${addr.slice(0, 6)}...${addr.slice(-4)}`
-  }, [])
 
   const approve = useCallback(async () => {
     setError(null)
@@ -479,17 +327,6 @@ export function VaultManagerDemo() {
     return formatUnits(allowance, tokenDecimals)
   }, [allowance, tokenDecimals])
 
-  const tokenBalanceHuman = useMemo(() => {
-    if (tokenBalance == null || tokenDecimals == null) return null
-    return formatUnits(tokenBalance, tokenDecimals)
-  }, [tokenBalance, tokenDecimals])
-
-  const handleMaxClick = useCallback(() => {
-    if (tokenBalanceHuman != null) {
-      setAmount(tokenBalanceHuman)
-    }
-  }, [tokenBalanceHuman])
-
   const nowSeconds = Math.floor(Date.now() / 1000)
   const unlockHuman = useMemo(() => {
     if (!unlockTimestamp) return null
@@ -515,10 +352,9 @@ export function VaultManagerDemo() {
           </div>
           {!vaultManagerAddress && (
             <div className="text-muted-foreground">
-              请配置合约地址：提交 `contracts/deployments/vault-manager.json`（`node contracts/scripts/sync-deployments.mjs`）
-              或设置 <span className="font-mono">NEXT_PUBLIC_VAULT_MANAGER_ADDRESS</span>（或按链设置{" "}
-              <span className="font-mono">NEXT_PUBLIC_VAULT_MANAGER_ADDRESS_ARBITRUM</span> /{" "}
-              <span className="font-mono">NEXT_PUBLIC_VAULT_MANAGER_ADDRESS_MAINNET</span>）。
+              请设置 <span className="font-mono">NEXT_PUBLIC_VAULT_MANAGER_ADDRESS_ARBITRUM</span> /{" "}
+              <span className="font-mono">NEXT_PUBLIC_VAULT_MANAGER_ADDRESS_MAINNET</span>（或{" "}
+              <span className="font-mono">NEXT_PUBLIC_VAULT_MANAGER_ADDRESS</span>）。
             </div>
           )}
         </div>
@@ -532,99 +368,20 @@ export function VaultManagerDemo() {
               <Input value={unlockMinutes} onChange={(e) => setUnlockMinutes(e.target.value)} inputMode="numeric" />
             </div>
             <div className="sm:col-span-2 space-y-1">
-              <div className="flex items-center justify-between">
-                <label className="text-xs text-muted-foreground">ERC20 Token（自动读取白名单）</label>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => refreshWhitelist().catch((err) => setWhitelistError(toErrorMessage(err)))}
-                  disabled={whitelistLoading || busy || !vaultManagerAddress}
-                >
-                  {whitelistLoading ? "刷新中…" : "刷新白名单"}
-                </Button>
-              </div>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="w-full justify-between bg-transparent"
-                    disabled={!vaultManagerAddress || whitelistLoading || !whitelistedTokens.length}
-                  >
-                    {tokenAddressValid && tokenSymbol ? (
-                      <span>
-                        {tokenSymbol} <span className="text-muted-foreground">({formatAddress(tokenAddressTyped!)})</span>
-                      </span>
-                    ) : whitelistedTokens.length ? (
-                      <span className="text-muted-foreground">选择白名单 Token</span>
-                    ) : whitelistLoading ? (
-                      <span className="text-muted-foreground">加载白名单中…</span>
-                    ) : (
-                      <span className="text-muted-foreground">暂无白名单 Token</span>
-                    )}
-                    <ChevronDown className="h-4 w-4 opacity-70" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="max-h-72 overflow-auto">
-                  {whitelistedTokens.map((t) => (
-                    <DropdownMenuItem key={t.address} onClick={() => setTokenAddress(t.address)}>
-                      <span className="font-medium">{t.symbol ?? "Unknown"}</span>
-                      <span className="ml-2 font-mono text-xs text-muted-foreground">{formatAddress(t.address)}</span>
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-
-              <div className="text-xs text-muted-foreground">
-                白名单数量：{whitelistedTokens.length}
-                {whitelistError ? <span className="ml-2 text-destructive">{whitelistError}</span> : null}
-              </div>
-
-              {whitelistedTokens.length ? (
-                <div className="flex flex-wrap gap-2">
-                  {whitelistedTokens.map((t) => (
-                    <span key={t.address} className="rounded bg-muted px-2 py-1 text-xs">
-                      <span className="font-medium">{t.symbol ?? "Unknown"}</span>{" "}
-                      <span className="font-mono text-muted-foreground">{formatAddress(t.address)}</span>
-                    </span>
-                  ))}
-                </div>
-              ) : null}
-
-              <div className="pt-2">
-                <label className="text-xs text-muted-foreground">或手动输入 Token 地址</label>
-                <Input
-                  value={tokenAddress}
-                  onChange={(e) => setTokenAddress(e.target.value)}
-                  placeholder="0x…"
-                  className={tokenAddress && !tokenAddressValid ? "border-destructive" : ""}
-                />
-              </div>
+              <label className="text-xs text-muted-foreground">ERC20 Token 地址（需在白名单）</label>
+              <Input
+                value={tokenAddress}
+                onChange={(e) => setTokenAddress(e.target.value)}
+                placeholder="0x…"
+                className={tokenAddress && !tokenAddressValid ? "border-destructive" : ""}
+              />
             </div>
           </div>
 
           <div className="grid gap-3 sm:grid-cols-3">
             <div className="space-y-1">
-              <div className="flex items-center justify-between">
-                <label className="text-xs text-muted-foreground">数量</label>
-                {tokenBalanceHuman != null && (
-                  <span className="text-xs text-muted-foreground">
-                    余额: {tokenBalanceHuman} {tokenSymbol}
-                  </span>
-                )}
-              </div>
-              <div className="flex gap-2">
-                <Input value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.0" inputMode="decimal" className="flex-1" />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={handleMaxClick}
-                  disabled={tokenBalanceHuman == null}
-                  className="shrink-0"
-                >
-                  Max
-                </Button>
-              </div>
+              <label className="text-xs text-muted-foreground">数量</label>
+              <Input value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.0" inputMode="decimal" />
             </div>
             <div className="sm:col-span-2 space-y-1">
               <label className="text-xs text-muted-foreground">信息</label>
@@ -705,119 +462,29 @@ export function VaultManagerDemo() {
               variant="ghost"
               size="icon"
               onClick={() => refreshVaultIds().catch((err) => setError(toErrorMessage(err)))}
-              disabled={!isConnected || busy || vaultDetailsLoading}
+              disabled={!isConnected || busy}
             >
-              <RefreshCw className={`h-4 w-4 ${vaultDetailsLoading ? "animate-spin" : ""}`} />
+              <RefreshCw className="h-4 w-4" />
             </Button>
           </div>
-          {myVaultIds.length ? (
-            <div className="grid gap-3 sm:grid-cols-2">
-              {myVaultIds.map((id) => {
-                const detail = vaultDetails.get(id.toString())
-                const isUnlocked = detail ? detail.unlockTimestamp <= BigInt(nowSeconds) : false
-                const unlockDate = detail ? new Date(Number(detail.unlockTimestamp) * 1000) : null
-
-                return (
-                  <div
-                    key={id.toString()}
-                    className={`rounded-lg border p-3 text-xs space-y-2 ${
-                      detail?.broken
-                        ? "bg-muted/50 opacity-60"
-                        : isUnlocked
-                        ? "border-green-500/50 bg-green-500/5"
-                        : "bg-background"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="font-semibold">Vault #{id.toString()}</span>
-                      {detail?.broken ? (
-                        <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">已取回</span>
-                      ) : isUnlocked ? (
-                        <span className="rounded bg-green-500/20 px-1.5 py-0.5 text-[10px] text-green-600">可取回</span>
-                      ) : (
-                        <span className="rounded bg-yellow-500/20 px-1.5 py-0.5 text-[10px] text-yellow-600">锁定中</span>
-                      )}
-                    </div>
-
-                    {detail ? (
-                      <>
-                        <div className="text-muted-foreground">
-                          解锁时间：{unlockDate?.toLocaleString()}
-                          {!isUnlocked && detail.unlockTimestamp > BigInt(nowSeconds) && (
-                            <span className="ml-1">
-                              (剩余 {Math.ceil((Number(detail.unlockTimestamp) - nowSeconds) / 60)} 分钟)
-                            </span>
-                          )}
-                        </div>
-
-                        {detail.tokens.length > 0 ? (
-                          <div className="space-y-1">
-                            <div className="text-muted-foreground">存入资产：</div>
-                            {detail.tokens.map((token) => (
-                              <div key={token.address} className="flex items-center justify-between rounded bg-muted/50 px-2 py-1">
-                                <span className="font-medium">{token.symbol}</span>
-                                <span className="font-mono">{formatUnits(token.balance, token.decimals)}</span>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <div className="text-muted-foreground">暂无存入资产</div>
-                        )}
-
-                        {!detail.broken && (
-                          <Button
-                            size="sm"
-                            variant={isUnlocked ? "default" : "outline"}
-                            className="w-full mt-2"
-                            onClick={async () => {
-                              setBreakVaultId(id.toString())
-                              // 直接使用当前 id 调用合约
-                              if (!walletClient || !publicClient || !vaultManagerAddress) return
-                              setError(null)
-                              setStatus("")
-                              try {
-                                setBusy(true)
-                                setStatus("Break 中…")
-                                const hash = await (walletClient as any).writeContract({
-                                  address: vaultManagerAddress,
-                                  abi: vaultManagerAbi,
-                                  functionName: "breakVault",
-                                  args: [id],
-                                  account: address,
-                                })
-                                setTxHash(hash)
-                                await publicClient.waitForTransactionReceipt({ hash })
-                                setStatus("已 Break")
-                                await refreshVaultIds()
-                              } catch (err) {
-                                setError(toErrorMessage(err))
-                              } finally {
-                                setBusy(false)
-                              }
-                            }}
-                            disabled={busy}
-                          >
-                            {isUnlocked ? "取回（100%）" : "提前取回（95%）"}
-                          </Button>
-                        )}
-                      </>
-                    ) : vaultDetailsLoading ? (
-                      <div className="text-muted-foreground">加载中...</div>
-                    ) : null}
-                  </div>
-                )
-              })}
-            </div>
-          ) : (
-            <div className="rounded-md border bg-background px-3 py-2 text-xs text-muted-foreground">
-              暂无 Vault
-            </div>
-          )}
-          {lastCreatedVaultId != null && (
-            <div className="text-xs text-muted-foreground">
-              最近创建：<span className="font-mono">#{lastCreatedVaultId.toString()}</span>
-            </div>
-          )}
+          <div className="rounded-md border bg-background px-3 py-2 text-xs">
+            {myVaultIds.length ? (
+              <div className="flex flex-wrap gap-2">
+                {myVaultIds.map((id) => (
+                  <span key={id.toString()} className="rounded bg-muted px-2 py-1 font-mono">
+                    {id.toString()}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <div className="text-muted-foreground">暂无 Vault</div>
+            )}
+            {lastCreatedVaultId != null && (
+              <div className="mt-2 text-muted-foreground">
+                最近创建：<span className="font-mono">{lastCreatedVaultId.toString()}</span>
+              </div>
+            )}
+          </div>
         </div>
 
         {(status || error || txHash) && (

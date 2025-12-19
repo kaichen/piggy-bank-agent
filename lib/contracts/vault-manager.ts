@@ -1,10 +1,5 @@
 export const vaultManagerAbi = [
   {
-    type: "constructor",
-    stateMutability: "nonpayable",
-    inputs: [],
-  },
-  {
     type: "event",
     name: "VaultCreated",
     inputs: [
@@ -58,13 +53,6 @@ export const vaultManagerAbi = [
     stateMutability: "view",
     inputs: [{ name: "", type: "address" }],
     outputs: [{ name: "", type: "bool" }],
-  },
-  {
-    type: "function",
-    name: "getWhitelistedTokens",
-    stateMutability: "view",
-    inputs: [],
-    outputs: [{ name: "", type: "address[]" }],
   },
   {
     type: "function",

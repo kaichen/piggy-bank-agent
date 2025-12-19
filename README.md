@@ -35,27 +35,12 @@ Foundry contracts live under `contracts/`. See `contracts/README.md` for deploy 
 
 ### Frontend config
 
-Option A (recommended): sync from Foundry broadcast and commit deployments:
+Set the deployed VaultManager address for the target chain:
 
 ```bash
-cd contracts
-node scripts/sync-deployments.mjs
-git add deployments/vault-manager.json
-```
-
-Option B: set the deployed VaultManager address via env vars:
-
-```bash
-# Any chain (overrides everything)
-NEXT_PUBLIC_VAULT_MANAGER_ADDRESS=0x...
-
 # Arbitrum One (chainId=42161)
 NEXT_PUBLIC_VAULT_MANAGER_ADDRESS_ARBITRUM=0x...
 
 # Ethereum Mainnet (chainId=1)
 NEXT_PUBLIC_VAULT_MANAGER_ADDRESS_MAINNET=0x...
 ```
-
-### Admin deploy page
-
-Visit `/admin` to deploy `VaultManager` from your connected wallet (requires `lib/contracts/vault-manager-bytecode.ts`; see `contracts/README.md`).
