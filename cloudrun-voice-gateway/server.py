@@ -28,6 +28,7 @@ SYSTEM_INSTRUCTION = os.getenv(
     "Baymax. It sounds optimistic, patient, and soothing for children. Please respond to the child.",
 )
 DEFAULT_OAUTH_SCOPE = "https://www.googleapis.com/auth/generative-language"
+SETUP_TIMEOUT_SECONDS = float(os.getenv("GEMINI_SETUP_TIMEOUT", "15"))
 
 logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"))
 logger = logging.getLogger("voice-gateway")
@@ -216,12 +217,14 @@ async def websocket_endpoint(websocket: WebSocket):
 
                 if message.get("setupComplete"):
                     ready_event.set()
+                    logger.info("Gemini setupComplete")
                     await websocket.send_text(json.dumps({"type": "ready"}))
                     while pending_audio:
                         await send_audio_chunk(pending_audio.pop(0))
                     continue
 
                 if message.get("error") or message.get("rpcStatus"):
+                    logger.error("Gemini error payload: %s", message.get("error") or message.get("rpcStatus"))
                     await websocket.send_text(
                         json.dumps(
                             {
@@ -234,6 +237,7 @@ async def websocket_endpoint(websocket: WebSocket):
 
                 server_content = message.get("serverContent", {})
                 if server_content.get("interrupted"):
+                    logger.info("Gemini interrupted")
                     await websocket.send_text(json.dumps({"type": "interrupted"}))
 
                 parts = server_content.get("modelTurn", {}).get("parts", [])
@@ -245,17 +249,42 @@ async def websocket_endpoint(websocket: WebSocket):
                             await websocket.send_bytes(decode_base64(data))
 
                 if server_content.get("turnComplete"):
+                    logger.info("Gemini turnComplete")
                     await websocket.send_text(json.dumps({"type": "turn_complete"}))
-        except ConnectionClosed:
-            pass
+        except ConnectionClosed as error:
+            logger.info("Gemini WS closed: code=%s reason=%s", error.code, error.reason)
+            if not stop_event.is_set():
+                await websocket.send_text(
+                    json.dumps(
+                        {
+                            "type": "error",
+                            "message": f"Gemini connection closed ({error.code})",
+                            "details": error.reason,
+                        }
+                    )
+                )
+        except Exception:
+            logger.exception("Gemini WS receive loop failed")
         finally:
+            stop_event.set()
+
+    async def wait_for_setup() -> None:
+        try:
+            await asyncio.wait_for(ready_event.wait(), timeout=SETUP_TIMEOUT_SECONDS)
+        except asyncio.TimeoutError:
+            logger.error("Gemini setupComplete timeout")
+            if not stop_event.is_set():
+                await websocket.send_text(
+                    json.dumps({"type": "error", "message": "Gemini setup timeout"})
+                )
             stop_event.set()
 
     client_task = asyncio.create_task(handle_client_to_gemini())
     gemini_task = asyncio.create_task(handle_gemini_to_client())
+    timeout_task = asyncio.create_task(wait_for_setup())
 
     await stop_event.wait()
-    for task in (client_task, gemini_task):
+    for task in (client_task, gemini_task, timeout_task):
         task.cancel()
 
     try:
