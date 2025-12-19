@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useConversation } from "@elevenlabs/react"
 import { Menu, PhoneOff, Phone, Mic, MicOff } from "lucide-react"
+import { DotLottieReact } from "@lottiefiles/dotlottie-react"
 
 type CallStatus = "idle" | "connecting" | "connected" | "error"
 
@@ -120,12 +121,12 @@ export default function TalkPage() {
   // Get status text
   const getStatusText = () => {
     if (errorMessage) return errorMessage
-    if (status === "connecting") return "Connecting to Piggy Mentor..."
+    if (status === "connecting") return "Connecting to Piggy..."
     if (status === "connected") {
       if (conversation.isSpeaking) return "Piggy is speaking..."
       return "Listening..."
     }
-    return "Tap to start talking with Piggy Mentor"
+    return "Tap to start talking with Piggy"
   }
 
   const isConnected = status === "connected"
@@ -157,7 +158,12 @@ export default function TalkPage() {
                 : "bg-gradient-to-br from-slate-200 via-slate-300 to-slate-400"
             } ${conversation.isSpeaking ? "animate-pulse" : ""}`}
           >
-            <span className="text-8xl">🐷</span>
+            <DotLottieReact
+              src="/lotties/jump.json"
+              loop
+              autoplay
+              className="h-40 w-40"
+            />
           </div>
         </div>
 
