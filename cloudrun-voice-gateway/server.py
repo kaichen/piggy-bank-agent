@@ -3,9 +3,7 @@ import base64
 import json
 import logging
 import os
-import time
-from datetime import timezone
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 import google.auth
 from google.auth.transport.requests import Request
@@ -27,7 +25,6 @@ SYSTEM_INSTRUCTION = os.getenv(
     "being a pig) but remains very clear and pleasant to listen to. Think of a mix between Winnie the Pooh and "
     "Baymax. It sounds optimistic, patient, and soothing for children. Please respond to the child.",
 )
-DEFAULT_OAUTH_SCOPE = "https://www.googleapis.com/auth/generative-language"
 SETUP_TIMEOUT_SECONDS = float(os.getenv("GEMINI_SETUP_TIMEOUT", "15"))
 
 logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"))
@@ -36,8 +33,6 @@ logger = logging.getLogger("voice-gateway")
 app = FastAPI()
 
 _token_lock = asyncio.Lock()
-_cached_token: Optional[str] = None
-_cached_expiry: float = 0.0
 _cached_credentials = None
 
 
@@ -49,13 +44,16 @@ def decode_base64(data: str) -> bytes:
     return base64.b64decode(data)
 
 
-async def _load_default_credentials(scope: str):
+async def _load_default_credentials():
     global _cached_credentials
     if _cached_credentials is not None:
         return _cached_credentials
 
     def _load():
-        credentials, _ = google.auth.default(scopes=[scope])
+        credentials, _ = google.auth.default()
+        if getattr(credentials, "requires_scopes", False):
+            scope = os.getenv("GEMINI_OAUTH_SCOPE", "https://www.googleapis.com/auth/generative-language")
+            credentials = credentials.with_scopes([scope])
         return credentials
 
     _cached_credentials = await asyncio.to_thread(_load)
@@ -70,29 +68,15 @@ async def get_access_token() -> str:
     if os.getenv("GEMINI_API_KEY"):
         raise RuntimeError("API keys are not supported for Gemini Live API WebSocket. Use OAuth2.")
 
-    scope = os.getenv("GEMINI_OAUTH_SCOPE", DEFAULT_OAUTH_SCOPE)
-
-    global _cached_token, _cached_expiry
     async with _token_lock:
-        if _cached_token and (_cached_expiry - time.time()) > 60:
-            return _cached_token
-
-        credentials = await _load_default_credentials(scope)
-        await asyncio.to_thread(credentials.refresh, Request())
+        credentials = await _load_default_credentials()
+        if not credentials.valid:
+            await asyncio.to_thread(credentials.refresh, Request())
 
         token = credentials.token
-        expiry = getattr(credentials, "expiry", None)
-        if expiry is not None:
-            if expiry.tzinfo is None:
-                expiry = expiry.replace(tzinfo=timezone.utc)
-            _cached_expiry = expiry.timestamp()
-        else:
-            _cached_expiry = time.time() + 3300
-
         if not token:
             raise RuntimeError("Failed to obtain access token")
 
-        _cached_token = token
         return token
 
 
