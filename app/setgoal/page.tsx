@@ -300,9 +300,8 @@ export default function SetGoalPage() {
             <Button
               variant="outline"
               className="flex-1 rounded-xl border-slate-200 bg-white py-6 text-slate-700 hover:bg-slate-50"
-              onClick={() => setStep("age")}
             >
-              Adjust
+              <Link href="/setgoal/manual">Adjust</Link>
             </Button>
             <Button
               className="flex-[2] rounded-xl bg-slate-900 py-6 text-white hover:bg-slate-800"
