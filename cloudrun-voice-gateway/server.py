@@ -3,9 +3,7 @@ import base64
 import json
 import logging
 import os
-import time
-from datetime import timezone
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 import google.auth
 from google.auth.transport.requests import Request
@@ -28,6 +26,7 @@ SYSTEM_INSTRUCTION = os.getenv(
     "Baymax. It sounds optimistic, patient, and soothing for children. Please respond to the child.",
 )
 DEFAULT_OAUTH_SCOPE = "https://www.googleapis.com/auth/generative-language"
+SETUP_TIMEOUT_SECONDS = float(os.getenv("GEMINI_SETUP_TIMEOUT", "15"))
 
 logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"))
 logger = logging.getLogger("voice-gateway")
@@ -35,8 +34,6 @@ logger = logging.getLogger("voice-gateway")
 app = FastAPI()
 
 _token_lock = asyncio.Lock()
-_cached_token: Optional[str] = None
-_cached_expiry: float = 0.0
 _cached_credentials = None
 
 
@@ -48,13 +45,16 @@ def decode_base64(data: str) -> bytes:
     return base64.b64decode(data)
 
 
-async def _load_default_credentials(scope: str):
+async def _load_default_credentials():
     global _cached_credentials
     if _cached_credentials is not None:
         return _cached_credentials
 
     def _load():
-        credentials, _ = google.auth.default(scopes=[scope])
+        credentials, _ = google.auth.default()
+        if getattr(credentials, "requires_scopes", False):
+            scope = os.getenv("GEMINI_OAUTH_SCOPE", DEFAULT_OAUTH_SCOPE)
+            credentials = credentials.with_scopes([scope])
         return credentials
 
     _cached_credentials = await asyncio.to_thread(_load)
@@ -71,27 +71,24 @@ async def get_access_token() -> str:
 
     scope = os.getenv("GEMINI_OAUTH_SCOPE", DEFAULT_OAUTH_SCOPE)
 
-    global _cached_token, _cached_expiry
     async with _token_lock:
-        if _cached_token and (_cached_expiry - time.time()) > 60:
-            return _cached_token
-
-        credentials = await _load_default_credentials(scope)
-        await asyncio.to_thread(credentials.refresh, Request())
+        credentials = await _load_default_credentials()
+        if hasattr(credentials, "has_scopes"):
+            scopes = getattr(credentials, "scopes", None)
+            default_scopes = getattr(credentials, "default_scopes", None)
+            if (scopes or default_scopes) and not credentials.has_scopes([scope]):
+                raise RuntimeError(
+                    "ADC missing required scope. Run: gcloud auth application-default login "
+                    f"--scopes={scope},https://www.googleapis.com/auth/cloud-platform "
+                    "or set GEMINI_ACCESS_TOKEN."
+                )
+        if not credentials.valid:
+            await asyncio.to_thread(credentials.refresh, Request())
 
         token = credentials.token
-        expiry = getattr(credentials, "expiry", None)
-        if expiry is not None:
-            if expiry.tzinfo is None:
-                expiry = expiry.replace(tzinfo=timezone.utc)
-            _cached_expiry = expiry.timestamp()
-        else:
-            _cached_expiry = time.time() + 3300
-
         if not token:
             raise RuntimeError("Failed to obtain access token")
 
-        _cached_token = token
         return token
 
 
@@ -216,12 +213,14 @@ async def websocket_endpoint(websocket: WebSocket):
 
                 if message.get("setupComplete"):
                     ready_event.set()
+                    logger.info("Gemini setupComplete")
                     await websocket.send_text(json.dumps({"type": "ready"}))
                     while pending_audio:
                         await send_audio_chunk(pending_audio.pop(0))
                     continue
 
                 if message.get("error") or message.get("rpcStatus"):
+                    logger.error("Gemini error payload: %s", message.get("error") or message.get("rpcStatus"))
                     await websocket.send_text(
                         json.dumps(
                             {
@@ -234,6 +233,7 @@ async def websocket_endpoint(websocket: WebSocket):
 
                 server_content = message.get("serverContent", {})
                 if server_content.get("interrupted"):
+                    logger.info("Gemini interrupted")
                     await websocket.send_text(json.dumps({"type": "interrupted"}))
 
                 parts = server_content.get("modelTurn", {}).get("parts", [])
@@ -245,17 +245,42 @@ async def websocket_endpoint(websocket: WebSocket):
                             await websocket.send_bytes(decode_base64(data))
 
                 if server_content.get("turnComplete"):
+                    logger.info("Gemini turnComplete")
                     await websocket.send_text(json.dumps({"type": "turn_complete"}))
-        except ConnectionClosed:
-            pass
+        except ConnectionClosed as error:
+            logger.info("Gemini WS closed: code=%s reason=%s", error.code, error.reason)
+            if not stop_event.is_set():
+                await websocket.send_text(
+                    json.dumps(
+                        {
+                            "type": "error",
+                            "message": f"Gemini connection closed ({error.code})",
+                            "details": error.reason,
+                        }
+                    )
+                )
+        except Exception:
+            logger.exception("Gemini WS receive loop failed")
         finally:
+            stop_event.set()
+
+    async def wait_for_setup() -> None:
+        try:
+            await asyncio.wait_for(ready_event.wait(), timeout=SETUP_TIMEOUT_SECONDS)
+        except asyncio.TimeoutError:
+            logger.error("Gemini setupComplete timeout")
+            if not stop_event.is_set():
+                await websocket.send_text(
+                    json.dumps({"type": "error", "message": "Gemini setup timeout"})
+                )
             stop_event.set()
 
     client_task = asyncio.create_task(handle_client_to_gemini())
     gemini_task = asyncio.create_task(handle_gemini_to_client())
+    timeout_task = asyncio.create_task(wait_for_setup())
 
     await stop_event.wait()
-    for task in (client_task, gemini_task):
+    for task in (client_task, gemini_task, timeout_task):
         task.cancel()
 
     try:
