@@ -460,10 +460,10 @@ export default function VaultPage() {
           {/* Right Side Buttons */}
           <div className="flex flex-[1.5] flex-col gap-3">
             <Link
-              href="#"
+              href="/talk"
               className="flex items-center justify-center rounded-2xl border border-blue-200 bg-blue-50 py-3 font-medium text-blue-600"
             >
-              Interaction
+              Talk to Piggy
             </Link>
             <button
               onClick={() => setBreakDialogOpen(true)}
