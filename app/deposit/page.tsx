@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation"
 import { Menu, Check, Wallet, RefreshCw, ArrowLeft } from "lucide-react"
 import { DotLottieReact } from "@lottiefiles/dotlottie-react"
 import { Button } from "@/components/ui/button"
+import { HeaderLogo } from "@/components/header-logo"
 import { getVaultManagerAddress, type Address } from "@/lib/contracts/addresses"
 import { vaultManagerAbi } from "@/lib/contracts/vault-manager"
 import { erc20Abi } from "@/lib/contracts/erc20"
@@ -263,12 +264,7 @@ export default function DepositPage() {
     return (
       <main className="min-h-screen bg-gradient-to-b from-pink-50 to-pink-100">
         <header className="flex h-16 items-center justify-between px-4">
-          <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-orange-500">
-              <span className="text-sm font-bold text-white">🐷</span>
-            </div>
-            <span className="text-xl font-bold text-slate-900">BitPiggy</span>
-          </div>
+          <HeaderLogo />
           <button className="p-2">
             <Menu className="h-6 w-6 text-slate-600" />
           </button>
@@ -308,12 +304,7 @@ export default function DepositPage() {
     return (
       <main className="min-h-screen bg-gradient-to-b from-pink-50 to-pink-100">
         <header className="flex h-16 items-center justify-between px-4">
-          <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-orange-500">
-              <span className="text-sm font-bold text-white">🐷</span>
-            </div>
-            <span className="text-xl font-bold text-slate-900">BitPiggy</span>
-          </div>
+          <HeaderLogo />
           <button className="p-2">
             <Menu className="h-6 w-6 text-slate-600" />
           </button>
@@ -342,12 +333,7 @@ export default function DepositPage() {
     <main className="min-h-screen bg-gradient-to-b from-pink-50 to-pink-100">
       {/* Header */}
       <header className="flex h-16 items-center justify-between px-4">
-        <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-orange-500">
-            <span className="text-sm font-bold text-white">🐷</span>
-          </div>
-          <span className="text-xl font-bold text-slate-900">BitPiggy</span>
-        </div>
+        <HeaderLogo />
         <button className="p-2">
           <Menu className="h-6 w-6 text-slate-600" />
         </button>

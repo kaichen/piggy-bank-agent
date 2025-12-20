@@ -1,18 +1,14 @@
 import Image from "next/image"
 import Link from "next/link"
 import { Menu, ArrowRight } from "lucide-react"
+import { HeaderLogo } from "@/components/header-logo"
 
 export default function Home() {
   return (
     <main className="min-h-screen bg-gradient-to-b from-pink-50 to-pink-100">
       {/* Header */}
       <header className="flex h-16 items-center justify-between px-4">
-        <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-orange-500">
-            <span className="text-sm font-bold text-white">🐷</span>
-          </div>
-          <span className="text-xl font-bold text-slate-900">BitPiggy</span>
-        </div>
+        <HeaderLogo />
         <button className="p-2">
           <Menu className="h-6 w-6 text-slate-600" />
         </button>

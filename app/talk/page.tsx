@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { useConversation } from "@elevenlabs/react"
 import { Menu, PhoneOff, Phone, Mic, MicOff } from "lucide-react"
 import { DotLottieReact } from "@lottiefiles/dotlottie-react"
+import { HeaderLogo } from "@/components/header-logo"
 
 type CallStatus = "idle" | "connecting" | "connected" | "error"
 
@@ -136,12 +137,7 @@ export default function TalkPage() {
     <main className="flex min-h-screen flex-col bg-gradient-to-b from-pink-50 to-pink-100">
       {/* Header */}
       <header className="flex h-16 items-center justify-between px-4">
-        <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-orange-500">
-            <span className="text-sm font-bold text-white">🐷</span>
-          </div>
-          <span className="text-xl font-bold text-slate-900">BitPiggy</span>
-        </div>
+        <HeaderLogo />
         <button className="p-2">
           <Menu className="h-6 w-6 text-slate-600" />
         </button>

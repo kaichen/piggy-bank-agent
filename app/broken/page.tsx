@@ -3,10 +3,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { formatUnits } from "viem"
 import { useAccount, useChainId, useConnect, usePublicClient } from "wagmi"
-import Image from "next/image"
 import Link from "next/link"
 import { Menu, ArrowLeft, Wallet } from "lucide-react"
+import { DotLottieReact } from "@lottiefiles/dotlottie-react"
 import { Button } from "@/components/ui/button"
+import { HeaderLogo } from "@/components/header-logo"
 import { getVaultManagerAddress, type Address } from "@/lib/contracts/addresses"
 import { vaultManagerAbi } from "@/lib/contracts/vault-manager"
 import { erc20Abi } from "@/lib/contracts/erc20"
@@ -155,12 +156,7 @@ export default function BrokenPage() {
     return (
       <main className="min-h-screen bg-gradient-to-b from-pink-50 to-pink-100">
         <header className="flex h-16 items-center justify-between px-4">
-          <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-orange-500">
-              <span className="text-sm font-bold text-white">🐷</span>
-            </div>
-            <span className="text-xl font-bold text-slate-900">BitPiggy</span>
-          </div>
+          <HeaderLogo />
           <button className="p-2">
             <Menu className="h-6 w-6 text-slate-600" />
           </button>
@@ -200,12 +196,7 @@ export default function BrokenPage() {
     return (
       <main className="min-h-screen bg-gradient-to-b from-pink-50 to-pink-100">
         <header className="flex h-16 items-center justify-between px-4">
-          <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-orange-500">
-              <span className="text-sm font-bold text-white">🐷</span>
-            </div>
-            <span className="text-xl font-bold text-slate-900">BitPiggy</span>
-          </div>
+          <HeaderLogo />
           <button className="p-2">
             <Menu className="h-6 w-6 text-slate-600" />
           </button>
@@ -222,12 +213,7 @@ export default function BrokenPage() {
     <main className="min-h-screen bg-gradient-to-b from-pink-50 to-pink-100">
       {/* Header */}
       <header className="flex h-16 items-center justify-between px-4">
-        <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-orange-500">
-            <span className="text-sm font-bold text-white">🐷</span>
-          </div>
-          <span className="text-xl font-bold text-slate-900">BitPiggy</span>
-        </div>
+        <HeaderLogo />
         <button className="p-2">
           <Menu className="h-6 w-6 text-slate-600" />
         </button>
@@ -236,21 +222,17 @@ export default function BrokenPage() {
       {/* Content */}
       <div className="flex flex-col items-center px-6 py-4">
         {/* Back & Title */}
-        <div className="mb-6 flex w-full max-w-md items-center gap-3">
-          <Link href="/vault" className="text-slate-400 hover:text-slate-600">
-            <ArrowLeft className="h-6 w-6" />
-          </Link>
+        <div className="mb-6 flex w-full max-w-md items-center">
           <h1 className="text-2xl font-bold text-slate-900">Funds Released</h1>
         </div>
 
         {/* Broken Piggy Image */}
-        <div className="mb-6 w-full max-w-md overflow-hidden rounded-3xl bg-white shadow-lg">
-          <Image
-            src="/placeholder.svg"
-            alt="Broken Piggy Bank"
-            width={400}
-            height={350}
-            className="w-full object-cover"
+        <div className="mb-6 overflow-hidden rounded-3xl bg-white shadow-lg">
+          <DotLottieReact
+            src="/lotties/broken.json"
+            loop
+            autoplay
+            className="w-full"
           />
         </div>
 
@@ -296,10 +278,10 @@ export default function BrokenPage() {
 
         {/* Back to Vault Button */}
         <Link
-          href="/vault"
+          href="/newplan"
           className="w-full max-w-md rounded-2xl bg-slate-900 py-4 text-center font-semibold text-white hover:bg-slate-800"
         >
-          Back to Vault
+          New Plan
         </Link>
       </div>
     </main>
