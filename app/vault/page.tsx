@@ -7,6 +7,7 @@ import Image from "next/image"
 import Link from "next/link"
 import { Menu, Plus, MessageSquare, Wallet, RefreshCw } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { HeaderLogo } from "@/components/header-logo"
 import {
   Dialog,
   DialogContent,
@@ -260,12 +261,7 @@ export default function VaultPage() {
       <main className="min-h-screen bg-gradient-to-b from-pink-50 to-pink-100">
         {/* Header */}
         <header className="flex h-16 items-center justify-between px-4">
-          <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-orange-500">
-              <span className="text-sm font-bold text-white">🐷</span>
-            </div>
-            <span className="text-xl font-bold text-slate-900">BitPiggy</span>
-          </div>
+          <HeaderLogo />
           <button className="p-2">
             <Menu className="h-6 w-6 text-slate-600" />
           </button>
@@ -308,12 +304,7 @@ export default function VaultPage() {
     return (
       <main className="min-h-screen bg-gradient-to-b from-pink-50 to-pink-100">
         <header className="flex h-16 items-center justify-between px-4">
-          <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-orange-500">
-              <span className="text-sm font-bold text-white">🐷</span>
-            </div>
-            <span className="text-xl font-bold text-slate-900">BitPiggy</span>
-          </div>
+          <HeaderLogo />
           <button className="p-2">
             <Menu className="h-6 w-6 text-slate-600" />
           </button>
@@ -331,12 +322,7 @@ export default function VaultPage() {
     return (
       <main className="min-h-screen bg-gradient-to-b from-pink-50 to-pink-100">
         <header className="flex h-16 items-center justify-between px-4">
-          <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-orange-500">
-              <span className="text-sm font-bold text-white">🐷</span>
-            </div>
-            <span className="text-xl font-bold text-slate-900">BitPiggy</span>
-          </div>
+          <HeaderLogo />
           <button className="p-2">
             <Menu className="h-6 w-6 text-slate-600" />
           </button>
@@ -366,12 +352,7 @@ export default function VaultPage() {
     <main className="min-h-screen bg-gradient-to-b from-pink-50 to-pink-100">
       {/* Header */}
       <header className="flex h-16 items-center justify-between px-4">
-        <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-orange-500">
-            <span className="text-sm font-bold text-white">🐷</span>
-          </div>
-          <span className="text-xl font-bold text-slate-900">BitPiggy</span>
-        </div>
+        <HeaderLogo />
         <button className="p-2">
           <Menu className="h-6 w-6 text-slate-600" />
         </button>
@@ -511,10 +492,10 @@ export default function VaultPage() {
           <div className="flex gap-3">
             <Button
               variant="outline"
-              className="flex-1 rounded-xl border-slate-200 py-6 font-semibold text-slate-700 hover:bg-slate-50"
+              className="h-auto flex-1 rounded-xl border-slate-200 py-6 font-semibold text-slate-700 hover:bg-slate-50"
               onClick={() => setBreakDialogOpen(false)}
             >
-              Keep Saving
+              Keep It
             </Button>
             <Link
               href="/broken"
